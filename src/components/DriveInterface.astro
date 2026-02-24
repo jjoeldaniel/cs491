@@ -1,0 +1,223 @@
+---
+
+---
+
+<div class="flex h-[calc(100vh-73px)] w-full overflow-hidden">
+  <aside class="w-48 md:w-64 p-4 hidden sm:block border-r bg-gray-50/50">
+    <button
+      id="new-btn"
+      class="flex items-center gap-2 bg-white border border-gray-200 shadow-sm rounded-2xl px-5 py-3 hover:bg-gray-50 hover:shadow transition-all text-sm font-medium text-gray-700 w-full md:w-auto"
+    >
+      <svg
+        class="w-5 h-5 text-gray-600"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
+        ><path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg
+      >
+      New
+    </button>
+    <input type="file" id="file-input" class="hidden" multiple />
+  </aside>
+
+  <main
+    id="drive-main"
+    class="flex-1 relative p-6 overflow-y-auto bg-white transition-colors"
+  >
+    <div
+      id="drag-overlay"
+      class="absolute inset-2 rounded-xl border-2 border-blue-400 border-dashed bg-blue-50/90 z-50 flex items-center justify-center hidden pointer-events-none"
+    >
+      <div class="text-center">
+        <svg
+          class="w-16 h-16 text-blue-500 mx-auto mb-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          ><path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+          ></path></svg
+        >
+        <p class="text-2xl font-semibold text-blue-700">
+          Drop files to instantly upload
+        </p>
+      </div>
+    </div>
+
+    <div class="flex justify-between items-end mb-6 border-b pb-2">
+      <h2 class="text-lg font-medium text-gray-800">My Drive</h2>
+      <span id="upload-status" class="text-sm font-medium text-blue-600 hidden"
+        >Uploading...</span
+      >
+    </div>
+
+    <div
+      id="file-list-container"
+      class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4"
+    >
+      <p class="text-gray-500 col-span-full" id="loading-text">
+        Loading your files...
+      </p>
+    </div>
+  </main>
+</div>
+
+<script>
+  import { getSupabaseClient } from "../lib/supabase";
+
+  // UI Elements
+  const container = document.getElementById("file-list-container");
+  const driveMain = document.getElementById("drive-main");
+  const dragOverlay = document.getElementById("drag-overlay");
+  const newBtn = document.getElementById("new-btn");
+  const fileInput = document.getElementById("file-input");
+  const uploadStatus = document.getElementById("upload-status");
+
+  // 1. Initialization & Auth
+  const waitForClerk = setInterval(() => {
+    if (window.Clerk && window.Clerk.loaded) {
+      clearInterval(waitForClerk);
+      if (window.Clerk.user) {
+        loadFiles();
+      } else {
+        container.innerHTML =
+          '<p class="text-gray-500 col-span-full">Please sign in to view your files.</p>';
+      }
+    }
+  }, 100);
+
+  // 2. Drag and Drop Logic
+  let dragCounter = 0; // Prevents flickering when dragging over child elements
+
+  driveMain.addEventListener("dragenter", (e) => {
+    e.preventDefault();
+    dragCounter++;
+    dragOverlay.classList.remove("hidden");
+  });
+
+  driveMain.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    dragCounter--;
+    if (dragCounter === 0) {
+      dragOverlay.classList.add("hidden");
+    }
+  });
+
+  driveMain.addEventListener("dragover", (e) => e.preventDefault());
+
+  driveMain.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dragCounter = 0;
+    dragOverlay.classList.add("hidden");
+    handleUpload(e.dataTransfer.files);
+  });
+
+  // 3. Click to Upload Logic
+  newBtn.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", (e) => handleUpload(e.target.files));
+
+  // 4. Upload Function
+  async function handleUpload(files) {
+    if (!files || files.length === 0 || !window.Clerk?.user) return;
+
+    const userId = window.Clerk.user.id;
+    const supabase = await getSupabaseClient();
+
+    uploadStatus.classList.remove("hidden");
+    uploadStatus.textContent = `Uploading ${files.length} file(s)...`;
+
+    for (const file of files) {
+      const filePath = `${userId}/${Date.now()}_${file.name}`;
+      const { error } = await supabase.storage
+        .from("user_files")
+        .upload(filePath, file);
+      if (error) console.error("Upload Error:", error);
+    }
+
+    uploadStatus.textContent = "Upload complete!";
+    setTimeout(() => uploadStatus.classList.add("hidden"), 3000);
+
+    // Refresh the list immediately after upload
+    loadFiles();
+  }
+
+  // 5. Fetch and Render Files
+  async function loadFiles() {
+    const userId = window.Clerk.user.id;
+    const supabase = await getSupabaseClient();
+
+    const { data, error } = await supabase.storage
+      .from("user_files")
+      .list(userId, {
+        limit: 100,
+        sortBy: { column: "created_at", order: "desc" },
+      });
+
+    if (error) {
+      container.innerHTML =
+        '<p class="text-red-500 col-span-full">Failed to load files.</p>';
+      return;
+    }
+
+    const validFiles =
+      data?.filter((f) => f.name !== ".emptyFolderPlaceholder") || [];
+
+    if (validFiles.length === 0) {
+      container.innerHTML = `
+        <div class="col-span-full flex flex-col items-center justify-center py-20 text-gray-400">
+          <svg class="w-20 h-20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          <p>Your drive is empty. Drag files here to upload.</p>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = "";
+
+    validFiles.forEach((file) => {
+      const fileCard = document.createElement("div");
+      fileCard.className =
+        "group flex flex-col p-3 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-blue-50 hover:border-blue-200 cursor-pointer transition-colors";
+      fileCard.onclick = () => downloadFile(`${userId}/${file.name}`);
+
+      const iconWrapper = document.createElement("div");
+      iconWrapper.className =
+        "flex items-center justify-center h-16 mb-2 text-gray-400 group-hover:text-blue-500 transition-colors";
+      iconWrapper.innerHTML = `<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>`;
+
+      const fileName = document.createElement("span");
+      fileName.className =
+        "text-sm font-medium text-gray-700 truncate text-center";
+      fileName.textContent = file.name.replace(/^\d+_/, "");
+      fileName.title = file.name;
+
+      fileCard.appendChild(iconWrapper);
+      fileCard.appendChild(fileName);
+      container.appendChild(fileCard);
+    });
+  }
+
+  // 6. Download Logic
+  async function downloadFile(path) {
+    const supabase = await getSupabaseClient();
+    const { data, error } = await supabase.storage
+      .from("user_files")
+      .createSignedUrl(path, 60);
+
+    if (error) return alert("Could not download file.");
+
+    const link = document.createElement("a");
+    link.href = data.signedUrl;
+    link.download = path.split("/").pop();
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+</script>

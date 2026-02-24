@@ -1,14 +1,28 @@
 ---
-import '../styles/global.css'
+import "../styles/global.css";
+import { SignedIn, SignedOut, UserButton } from "@clerk/astro/components";
 ---
+
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cloud Storage</title>
   </head>
-  <slot />
+  <body class="bg-gray-50 text-gray-900 min-h-screen">
+    <header class="flex justify-between items-center p-4 bg-white border-b">
+      <h1 class="text-xl font-bold">My Drive</h1>
+      <nav>
+        <SignedOut>
+          <a href="/sign-in" class="text-blue-600 hover:underline">Sign In</a>
+        </SignedOut>
+        <SignedIn>
+          <UserButton />
+        </SignedIn>
+      </nav>
+    </header>
+    <main class="w-full">
+      <slot />
+    </main>
+  </body>
 </html>

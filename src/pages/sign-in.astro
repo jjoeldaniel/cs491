@@ -1,0 +1,10 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { SignIn } from "@clerk/astro/components";
+---
+
+<Layout>
+  <div class="flex justify-center items-center mt-12">
+    <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" />
+  </div>
+</Layout>

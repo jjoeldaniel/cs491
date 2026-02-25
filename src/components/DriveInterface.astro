@@ -103,6 +103,67 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
     <div id="file-list-container" class="space-y-8">
       <p class="text-gray-400 text-sm">Loading...</p>
     </div>
+
+    <div
+      id="context-menu"
+      class="hidden fixed z-[100] w-48 bg-white border border-gray-200 rounded-lg shadow-xl py-2 overflow-hidden"
+    >
+      <button
+        id="cm-rename"
+        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors flex items-center gap-2"
+      >
+        <svg
+          class="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          ><path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+          ></path></svg
+        >
+        Rename
+      </button>
+      <button
+        id="cm-download"
+        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors flex items-center gap-2"
+      >
+        <svg
+          class="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          ><path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+          ></path></svg
+        >
+        Download
+      </button>
+      <div class="border-t border-gray-100 my-1"></div>
+      <button
+        id="cm-delete"
+        class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2 font-medium"
+      >
+        <svg
+          class="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          ><path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+          ></path></svg
+        >
+        Delete
+      </button>
+    </div>
   </main>
 </div>
 
@@ -311,6 +372,59 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
     });
   }
 
+  const contextMenu = document.getElementById("context-menu");
+  let currentTargetItem = null; // Stores { path, name, type }
+
+  // 1. Listen for right-clicks on items
+  document.addEventListener("contextmenu", (e) => {
+    // Check if we clicked an item card
+    const itemCard = e.target.closest("[data-item-path]");
+    if (!itemCard) {
+      hideContextMenu();
+      return;
+    }
+
+    e.preventDefault(); // Prevent native browser menu
+
+    const isAdmin = checkAdminPrivileges();
+    currentTargetItem = {
+      path: itemCard.getAttribute("data-item-path"),
+      name: itemCard.getAttribute("data-item-name"),
+      type: itemCard.getAttribute("data-item-type"),
+    };
+
+    // Show/Hide buttons based on type and permissions
+    document
+      .getElementById("cm-download")
+      .classList.toggle("hidden", currentTargetItem.type === "folder");
+    document.getElementById("cm-rename").classList.toggle("hidden", !isAdmin);
+    document.getElementById("cm-delete").classList.toggle("hidden", !isAdmin);
+
+    // Position and show menu
+    contextMenu.style.top = `${e.clientY}px`;
+    contextMenu.style.left = `${e.clientX}px`;
+    contextMenu.classList.remove("hidden");
+  });
+
+  // 2. Hide menu on click outside
+  window.addEventListener("click", hideContextMenu);
+  function hideContextMenu() {
+    contextMenu.classList.add("hidden");
+  }
+
+  // 3. Bind Menu Actions
+  document.getElementById("cm-rename").onclick = () => {
+    if (currentTargetItem)
+      window.triggerRename(currentTargetItem.path, currentTargetItem.name);
+  };
+  document.getElementById("cm-download").onclick = () => {
+    if (currentTargetItem)
+      window.triggerDownload(currentTargetItem.path, currentTargetItem.name);
+  };
+  document.getElementById("cm-delete").onclick = () => {
+    if (currentTargetItem) window.triggerDelete(currentTargetItem.path);
+  };
+
   newFileBtn.addEventListener("click", () => fileInput.click());
   fileInput.addEventListener("change", (e) => handleUpload(e.target.files));
 
@@ -417,7 +531,12 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
         const card = document.createElement("div");
         card.className =
           "group flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 cursor-pointer transition-colors";
-
+        card.setAttribute(
+          "data-item-path",
+          `${workspaceId}/${prefix}${folder.name}`,
+        );
+        card.setAttribute("data-item-name", folder.name);
+        card.setAttribute("data-item-type", "folder");
         card.draggable = isAdmin;
         card.ondragstart = (e) => {
           const folderFullPath = `${workspaceId}/${prefix}${folder.name}`;
@@ -467,6 +586,9 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
         const fullPath = `${workspaceId}/${prefix}${file.name}`;
 
         const card = document.createElement("div");
+        card.setAttribute("data-item-path", fullPath);
+        card.setAttribute("data-item-name", cleanFileName);
+        card.setAttribute("data-item-type", "file");
         // File Drag Logic
         card.draggable = isAdmin; // Only allow admins to drag files
         card.draggable = isAdmin;

@@ -1,0 +1,15 @@
+---
+import Layout from "../layouts/Layout.astro";
+import DriveInterface from "../components/DriveInterface.astro";
+const { isAuthenticated } = Astro.locals.auth();
+
+if (!isAuthenticated) {
+  return Astro.redirect("/login");
+}
+---
+
+<Layout>
+  <div class="h-[calc(100vh-73px)]">
+    <DriveInterface />
+  </div>
+</Layout>

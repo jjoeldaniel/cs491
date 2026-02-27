@@ -1131,7 +1131,7 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
     const supabase = await getSupabaseClient();
     const { data } = await supabase.storage
       .from("user_files")
-      .createSignedUrl(path, 60);
+      .createSignedUrl(path, 60, { download: fileName });
     const link = document.createElement("a");
     link.href = data.signedUrl;
     link.download = fileName;

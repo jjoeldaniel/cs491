@@ -8,17 +8,61 @@ import { SignedIn, SignedOut, UserButton } from "@clerk/astro/components";
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Cloud Storage</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
-  <body class="bg-gray-50 text-gray-900 min-h-screen">
-    <header class="flex justify-between items-center p-4 bg-white border-b">
-      <h1 class="text-xl font-bold">My Drive</h1>
-      <nav class="flex gap-4">
+  <body
+    class="bg-slate-50 text-slate-900 min-h-screen font-['Inter'] selection:bg-blue-100 selection:text-blue-900"
+  >
+    <header
+      class="sticky top-0 z-50 flex justify-between items-center px-6 py-4 bg-white/80 backdrop-blur-md border-b border-slate-200/50 shadow-sm transition-all text-slate-800"
+    >
+      <div class="flex items-center gap-3">
+        <div
+          class="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/30"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            ><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"
+            ></path>
+          </svg>
+        </div>
+        <h1
+          class="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700"
+        >
+          My Drive
+        </h1>
+      </div>
+      <nav class="flex items-center gap-5">
         <SignedOut>
-          <a href="/login" class="text-gray-600 hover:underline">Login</a>
-          <a href="/register" class="text-gray-600 hover:underline">Register</a>
+          <a
+            href="/login"
+            class="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+            >Login</a
+          >
+          <a
+            href="/register"
+            class="text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 px-4 py-2 rounded-full transition-all shadow-md hover:shadow-lg shadow-slate-900/20 active:scale-95"
+            >Sign Up</a
+          >
         </SignedOut>
         <SignedIn>
-          <UserButton />
+          <UserButton
+            appearance={{
+              elements: {
+                userButtonAvatarBox: "w-9 h-9 border-2 border-white shadow-sm",
+              },
+            }}
+          />
         </SignedIn>
       </nav>
     </header>

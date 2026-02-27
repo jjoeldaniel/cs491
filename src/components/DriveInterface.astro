@@ -35,8 +35,8 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
             stroke-linecap="round"
             stroke-linejoin="round"
             stroke-width="2"
-            d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg
-        >
+            d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
         Upload File
       </button>
       <button
@@ -53,8 +53,8 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
             stroke-linejoin="round"
             stroke-width="2"
             d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-          ></path></svg
-        >
+          ></path>
+        </svg>
         New Folder
       </button>
       <input type="file" id="file-input" class="hidden" multiple />
@@ -122,8 +122,8 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
             stroke-linejoin="round"
             stroke-width="2"
             d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-          ></path></svg
-        >
+          ></path>
+        </svg>
         Rename
       </button>
       <button
@@ -140,8 +140,8 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
             stroke-linejoin="round"
             stroke-width="2"
             d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-          ></path></svg
-        >
+          ></path>
+        </svg>
         Download
       </button>
       <div class="border-t border-gray-100 my-1"></div>
@@ -159,8 +159,8 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
             stroke-linejoin="round"
             stroke-width="2"
             d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-          ></path></svg
-        >
+          ></path>
+        </svg>
         Delete
       </button>
     </div>
@@ -195,7 +195,7 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
     // 2. Find the membership for the current active organization
     const activeOrgId = window.Clerk.organization.id;
     const membership = window.Clerk.user.organizationMemberships.find(
-      (m) => m.organization.id === activeOrgId,
+      (m) => m.organization.id === activeOrgId
     );
 
     // 3. Clerk roles usually look like 'org:admin' or 'admin'
@@ -211,6 +211,10 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
         refreshUI(true);
 
         window.Clerk.addListener(() => {
+          if (!window.Clerk.user) {
+            window.location.href = "/login";
+            return;
+          }
           const newWorkspaceId = getActiveWorkspaceId();
           if (newWorkspaceId !== activeWorkspaceId) {
             // ONLY reset path if the user actually switched teams
@@ -221,6 +225,8 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
             loadTeamMembers();
           }
         });
+      } else {
+        window.location.href = "/login";
       }
     }
   }, 100);
@@ -235,7 +241,7 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
   // --- Move to Ancestor Logic ---
   async function moveItemToAncestor(e, ancestorIndex) {
     const dragData = JSON.parse(
-      e.dataTransfer.getData("application/json") || "{}",
+      e.dataTransfer.getData("application/json") || "{}"
     );
     const oldPath = dragData.path;
     const isFolder = dragData.type === "folder";
@@ -262,7 +268,7 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
       // We must list all files with the folder prefix and move them one by one.
       const { data: filesToMove } = await supabase.storage
         .from("user_files")
-        .list(oldPath.replace(`${workspaceId}/`, ""), { limit: 100 });
+        .list(oldPath, { limit: 100 });
 
       if (filesToMove) {
         for (const file of filesToMove) {
@@ -363,10 +369,16 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
       const isAdmin = member.role === "org:admin";
       teamMembersList.innerHTML += `
         <li class="flex items-center gap-3">
-          <img src="${member.publicUserData.imageUrl}" class="w-7 h-7 rounded-full border border-gray-200">
+          <img src="${
+            member.publicUserData.imageUrl
+          }" class="w-7 h-7 rounded-full border border-gray-200">
           <div class="flex-1 min-w-0">
-            <p class="text-xs font-medium text-gray-700 truncate">${member.publicUserData.firstName} ${isSelf ? "(You)" : ""}</p>
-            <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${isAdmin ? "text-blue-600 bg-blue-50" : "text-gray-500 bg-gray-100"}">${isAdmin ? "Admin" : "Viewer"}</span>
+            <p class="text-xs font-medium text-gray-700 truncate">${
+              member.publicUserData.firstName
+            } ${isSelf ? "(You)" : ""}</p>
+            <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+              isAdmin ? "text-blue-600 bg-blue-50" : "text-gray-500 bg-gray-100"
+            }">${isAdmin ? "Admin" : "Viewer"}</span>
           </div>
         </li>`;
     });
@@ -415,14 +427,19 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
   // 3. Bind Menu Actions
   document.getElementById("cm-rename").onclick = () => {
     if (currentTargetItem)
-      window.triggerRename(currentTargetItem.path, currentTargetItem.name);
+      window.triggerRename(
+        currentTargetItem.path,
+        currentTargetItem.name,
+        currentTargetItem.type
+      );
   };
   document.getElementById("cm-download").onclick = () => {
     if (currentTargetItem)
       window.triggerDownload(currentTargetItem.path, currentTargetItem.name);
   };
   document.getElementById("cm-delete").onclick = () => {
-    if (currentTargetItem) window.triggerDelete(currentTargetItem.path);
+    if (currentTargetItem)
+      window.triggerDelete(currentTargetItem.path, currentTargetItem.type);
   };
 
   newFileBtn.addEventListener("click", () => fileInput.click());
@@ -495,7 +512,9 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
     const supabase = await getSupabaseClient();
     const isAdmin = checkAdminPrivileges();
     const prefix = currentPath.length > 0 ? currentPath.join("/") + "/" : "";
-    const searchPath = `${workspaceId}${prefix ? "/" + prefix.slice(0, -1) : ""}`;
+    const searchPath = `${workspaceId}${
+      prefix ? "/" + prefix.slice(0, -1) : ""
+    }`;
 
     container.innerHTML = '<p class="text-gray-400 text-sm">Loading...</p>';
     const { data, error } = await supabase.storage
@@ -533,7 +552,7 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
           "group flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 cursor-pointer transition-colors";
         card.setAttribute(
           "data-item-path",
-          `${workspaceId}/${prefix}${folder.name}`,
+          `${workspaceId}/${prefix}${folder.name}`
         );
         card.setAttribute("data-item-name", folder.name);
         card.setAttribute("data-item-type", "folder");
@@ -542,7 +561,7 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
           const folderFullPath = `${workspaceId}/${prefix}${folder.name}`;
           e.dataTransfer.setData(
             "application/json",
-            JSON.stringify({ path: folderFullPath, type: "folder" }),
+            JSON.stringify({ path: folderFullPath, type: "folder" })
           );
         };
 
@@ -595,10 +614,12 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
         card.ondragstart = (e) => {
           e.dataTransfer.setData(
             "application/json",
-            JSON.stringify({ path: fullPath, type: "file" }),
+            JSON.stringify({ path: fullPath, type: "file" })
           );
         };
-        card.className = `group flex flex-col justify-between p-4 rounded-xl border border-gray-200 bg-white hover:border-blue-300 hover:shadow-md transition-all ${isAdmin ? "cursor-grab active:cursor-grabbing" : ""}`;
+        card.className = `group flex flex-col justify-between p-4 rounded-xl border border-gray-200 bg-white hover:border-blue-300 hover:shadow-md transition-all ${
+          isAdmin ? "cursor-grab active:cursor-grabbing" : ""
+        }`;
 
         card.innerHTML = `
           <div class="mb-4 flex flex-col items-center cursor-pointer" onclick="window.triggerPreview('${fullPath}')">
@@ -610,7 +631,7 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
           <div class="flex justify-between items-center border-t border-gray-100 pt-3 mt-auto">
             ${
               isAdmin
-                ? `<button class="text-[11px] font-medium text-gray-500 hover:text-red-600 px-1" onclick="window.triggerDelete('${fullPath}')">Delete</button>`
+                ? `<button class="text-[11px] font-medium text-gray-500 hover:text-red-600 px-1" onclick="window.triggerDelete('${fullPath}', 'file')">Delete</button>`
                 : `<span class="text-[10px] font-bold uppercase text-gray-300 tracking-wider">Read Only</span>`
             }
             <button class="text-gray-400 hover:text-blue-600 ml-auto" onclick="window.triggerDownload('${fullPath}', '${cleanFileName}')"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></button>
@@ -627,7 +648,7 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
   window.moveFileToFolder = async (e, targetFolderName) => {
     // 1. Get the JSON data we set in ondragstart
     const dragData = JSON.parse(
-      e.dataTransfer.getData("application/json") || "{}",
+      e.dataTransfer.getData("application/json") || "{}"
     );
     const oldPath = dragData.path;
 
@@ -676,10 +697,73 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
     document.body.removeChild(link);
   };
 
-  window.triggerDelete = async (path) => {
-    if (!confirm("Delete this file?")) return;
+  window.triggerRename = async (path, oldName, type) => {
+    const newName = prompt(`Enter new name for ${type}:`, oldName);
+    if (!newName || newName === oldName) return;
+
     const supabase = await getSupabaseClient();
-    await supabase.storage.from("user_files").remove([path]);
+    uploadStatus.classList.remove("hidden");
+    uploadStatus.textContent = "Renaming...";
+
+    const newPath = path.slice(0, -oldName.length) + newName;
+
+    if (type === "folder") {
+      const { data: filesToMove } = await supabase.storage
+        .from("user_files")
+        .list(path, { limit: 100 });
+
+      if (filesToMove && filesToMove.length > 0) {
+        for (const file of filesToMove) {
+          const fileOldPath = `${path}/${file.name}`;
+          const fileNewPath = `${newPath}/${file.name}`;
+          await supabase.storage
+            .from("user_files")
+            .move(fileOldPath, fileNewPath);
+        }
+      } else {
+        await supabase.storage
+          .from("user_files")
+          .move(
+            `${path}/.emptyFolderPlaceholder`,
+            `${newPath}/.emptyFolderPlaceholder`
+          );
+      }
+    } else {
+      await supabase.storage.from("user_files").move(path, newPath);
+    }
+
+    uploadStatus.classList.add("hidden");
+    loadFiles();
+  };
+
+  window.triggerDelete = async (path, type) => {
+    if (!confirm(`Delete this ${type || "item"}?`)) return;
+    const supabase = await getSupabaseClient();
+    uploadStatus.classList.remove("hidden");
+    uploadStatus.textContent = "Deleting...";
+
+    if (type === "folder") {
+      const { data: filesToDelete } = await supabase.storage
+        .from("user_files")
+        .list(path, { limit: 100 });
+
+      if (filesToDelete && filesToDelete.length > 0) {
+        const pathsToRemove = filesToDelete.map(
+          (file) => `${path}/${file.name}`
+        );
+        await supabase.storage
+          .from("user_files")
+          .remove([...pathsToRemove, path, `${path}/.emptyFolderPlaceholder`]);
+      } else {
+        await supabase.storage
+          .from("user_files")
+          .remove([path, `${path}/.emptyFolderPlaceholder`]);
+      }
+    } else {
+      await supabase.storage.from("user_files").remove([path]);
+    }
+
+    uploadStatus.classList.add("hidden");
     loadFiles();
   };
 </script>

@@ -269,6 +269,61 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
   </div>
 </div>
 
+<!-- Preview Modal Overlay -->
+<div
+  id="preview-modal"
+  class="fixed inset-0 z-[250] hidden items-center justify-center bg-slate-900/80 backdrop-blur-md transition-opacity duration-200 opacity-0"
+>
+  <div
+    class="relative w-full max-w-5xl h-full max-h-screen p-6 flex flex-col items-center justify-center"
+  >
+    <!-- Close button & Download -->
+    <div class="absolute top-6 right-6 flex gap-3 z-[260]">
+      <button
+        id="preview-download"
+        class="bg-white/10 hover:bg-white/20 text-white rounded-full p-2.5 backdrop-blur-md transition-colors shadow-lg"
+        title="Download"
+      >
+        <svg
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          ><path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+          ></path>
+        </svg>
+      </button>
+      <button
+        id="preview-close"
+        class="bg-white/10 hover:bg-white/20 text-white rounded-full p-2.5 backdrop-blur-md transition-colors shadow-lg"
+        title="Close"
+      >
+        <svg
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          ><path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+    <div
+      id="preview-content-container"
+      class="w-full h-[85vh] flex items-center justify-center"
+    >
+      <!-- Media inserted here dynamically -->
+    </div>
+  </div>
+</div>
+
 <script>
   import { getSupabaseClient } from "../lib/supabase";
 
@@ -1010,12 +1065,66 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
     loadFiles();
   };
 
+  const previewModal = document.getElementById("preview-modal");
+  const previewContentContainer = document.getElementById(
+    "preview-content-container"
+  );
+  const previewClose = document.getElementById("preview-close");
+  const previewDownloadBtn = document.getElementById("preview-download");
+
+  if (previewClose && previewModal) {
+    previewClose.onclick = () => {
+      previewModal.classList.remove("opacity-100");
+      setTimeout(() => {
+        previewModal.classList.add("hidden");
+        previewModal.classList.remove("flex");
+        previewContentContainer.innerHTML = "";
+      }, 200);
+    };
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !previewModal.classList.contains("hidden")) {
+        previewClose.click();
+      }
+    });
+  }
+
   window.triggerPreview = async (path) => {
+    const extMatch = path.match(/\.([^.]+)$/);
+    const ext = extMatch ? extMatch[1].toLowerCase() : "";
+    const isImage = /^(png|jpe?g|gif|webp|svg)$/.test(ext);
+    const isPdf = /^pdf$/.test(ext);
+
     const supabase = await getSupabaseClient();
     const { data } = await supabase.storage
       .from("user_files")
       .createSignedUrl(path, 60);
-    window.open(data.signedUrl, "_blank");
+
+    if (isImage || isPdf) {
+      if (!previewModal) return window.open(data.signedUrl, "_blank");
+
+      previewModal.classList.remove("hidden");
+      previewModal.classList.add("flex");
+      // slight delay for transition
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          previewModal.classList.add("opacity-100");
+        });
+      });
+
+      previewDownloadBtn.onclick = () => {
+        const fileName = path.split("/").pop().replace(/^\d+_/, "");
+        window.triggerDownload(path, fileName);
+      };
+
+      if (isImage) {
+        previewContentContainer.innerHTML = `<img src="${data.signedUrl}" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl" />`;
+      } else if (isPdf) {
+        previewContentContainer.innerHTML = `<iframe src="${data.signedUrl}" class="w-full h-full rounded-lg shadow-2xl bg-white border-0"></iframe>`;
+      }
+    } else {
+      window.open(data.signedUrl, "_blank");
+    }
   };
 
   window.triggerDownload = async (path, fileName) => {

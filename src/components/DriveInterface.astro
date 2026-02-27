@@ -2,9 +2,19 @@
 import { OrganizationSwitcher } from "@clerk/astro/components";
 ---
 
-<div class="flex h-[calc(100vh-73px)] w-full overflow-hidden bg-slate-50/50">
+<div
+  class="flex relative h-[calc(100vh-73px)] w-full overflow-hidden bg-slate-50/50"
+>
+  <!-- Mobile Overlay -->
+  <div
+    id="mobile-overlay"
+    class="absolute inset-0 bg-slate-900/20 backdrop-blur-sm z-30 hidden sm:hidden opacity-0 transition-opacity duration-300"
+  >
+  </div>
+
   <aside
-    class="w-64 p-6 hidden sm:flex flex-col border-r border-slate-200/60 bg-white shadow-[2px_0_8px_-4px_rgba(0,0,0,0.05)] z-10"
+    id="mobile-sidebar"
+    class="w-64 p-6 flex flex-col border-r border-slate-200/60 bg-white shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)] z-40 absolute inset-y-0 left-0 -translate-x-full sm:translate-x-0 sm:relative sm:shadow-[2px_0_8px_-4px_rgba(0,0,0,0.05)] transition-transform duration-300 ease-in-out"
   >
     <div class="mb-6">
       <p
@@ -90,11 +100,29 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
     <div
       class="flex justify-between items-end mb-8 border-b border-gray-100 pb-4"
     >
-      <nav
-        id="breadcrumbs"
-        class="flex flex-wrap items-center gap-2 text-xl font-semibold text-gray-800 tracking-tight"
-      >
-      </nav>
+      <div class="flex items-center">
+        <button
+          id="mobile-menu-btn"
+          class="sm:hidden p-2 -ml-2 mr-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            ><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+        </button>
+        <nav
+          id="breadcrumbs"
+          class="flex flex-wrap items-center gap-2 text-xl font-semibold text-gray-800 tracking-tight"
+        >
+        </nav>
+      </div>
       <span
         id="upload-status"
         class="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full hidden"
@@ -267,6 +295,31 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
   const btnCancel = document.getElementById("modal-cancel");
   const btnConfirm = document.getElementById("modal-confirm");
   const btnClose = document.getElementById("modal-close");
+
+  const mobileSidebar = document.getElementById("mobile-sidebar");
+  const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+  const mobileOverlay = document.getElementById("mobile-overlay");
+
+  function toggleMobileMenu(forceClose = false) {
+    if (!mobileSidebar) return;
+    const isClosed = mobileSidebar.classList.contains("-translate-x-full");
+    if (forceClose || !isClosed) {
+      mobileSidebar.classList.add("-translate-x-full");
+      mobileOverlay.classList.remove("opacity-100");
+      setTimeout(() => mobileOverlay.classList.add("hidden"), 300);
+    } else {
+      mobileOverlay.classList.remove("hidden");
+      setTimeout(() => {
+        mobileOverlay.classList.add("opacity-100");
+        mobileSidebar.classList.remove("-translate-x-full");
+      }, 10);
+    }
+  }
+
+  if (mobileMenuBtn && mobileOverlay) {
+    mobileMenuBtn.addEventListener("click", () => toggleMobileMenu());
+    mobileOverlay.addEventListener("click", () => toggleMobileMenu(true));
+  }
 
   function showModal(options) {
     return new Promise((resolve) => {

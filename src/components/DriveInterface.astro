@@ -123,11 +123,18 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
         >
         </nav>
       </div>
-      <span
-        id="upload-status"
+      <div class="flex items-center gap-4">
+        <select id="sort-select" class="text-sm bg-white border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-gray-700 font-medium cursor-pointer">
+          <option value="date-desc">Upload Date</option>
+          <option value="name-asc">Name (A-Z)</option>
+          <option value="name-desc">Name (Z-A)</option>
+        </select>
+        <span
+          id="upload-status"
         class="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full hidden"
         >Processing...</span
       >
+      </div>
     </div>
 
     <div id="file-list-container" class="space-y-8">
@@ -187,6 +194,20 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
           ></path>
         </svg>
         Download
+      </button>
+      <button
+        id="cm-pin"
+        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors flex items-center gap-2"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+        <span id="cm-pin-text">Pin Folder</span>
+      </button>
+      <button
+        id="cm-favorite"
+        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors flex items-center gap-2"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
+        <span id="cm-favorite-text">Favorite File</span>
       </button>
       <div class="border-t border-gray-100 my-1"></div>
       <button
@@ -340,6 +361,51 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
   const breadcrumbsNav = document.getElementById("breadcrumbs");
   const teamSection = document.getElementById("team-section");
   const teamMembersList = document.getElementById("team-members-list");
+
+  const sortSelect = document.getElementById("sort-select");
+  let currentSort = localStorage.getItem("drive-sort") || "date-desc";
+  if (sortSelect) {
+    sortSelect.value = currentSort;
+    sortSelect.addEventListener("change", (e) => {
+      currentSort = e.target.value;
+      localStorage.setItem("drive-sort", currentSort);
+      loadFiles();
+    });
+  }
+
+  function getPinnedFolders() {
+    try { return JSON.parse(localStorage.getItem("pinned-folders") || "[]"); } catch { return []; }
+  }
+  function setPinnedFolders(folders) {
+    localStorage.setItem("pinned-folders", JSON.stringify(folders));
+  }
+  function togglePinFolder(path) {
+    let pinned = getPinnedFolders();
+    if (pinned.includes(path)) {
+      pinned = pinned.filter(p => p !== path);
+    } else {
+      pinned.push(path);
+    }
+    setPinnedFolders(pinned);
+    loadFiles();
+  }
+
+  function getFavoritedFiles() {
+    try { return JSON.parse(localStorage.getItem("favorited-files") || "[]"); } catch { return []; }
+  }
+  function setFavoritedFiles(files) {
+    localStorage.setItem("favorited-files", JSON.stringify(files));
+  }
+  function toggleFavoriteFile(path) {
+    let favs = getFavoritedFiles();
+    if (favs.includes(path)) {
+      favs = favs.filter(p => p !== path);
+    } else {
+      favs.push(path);
+    }
+    setFavoritedFiles(favs);
+    loadFiles();
+  }
 
   // --- Custom Modal System ---
   const modal = document.getElementById("custom-modal");
@@ -679,6 +745,17 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
       .classList.toggle("hidden", currentTargetItem.type === "folder");
     document.getElementById("cm-rename").classList.toggle("hidden", !isAdmin);
     document.getElementById("cm-delete").classList.toggle("hidden", !isAdmin);
+    
+    document.getElementById("cm-pin").classList.toggle("hidden", currentTargetItem.type !== "folder");
+    document.getElementById("cm-favorite").classList.toggle("hidden", currentTargetItem.type === "folder");
+
+    if (currentTargetItem.type === "folder") {
+      const isPinned = getPinnedFolders().includes(currentTargetItem.path);
+      document.getElementById("cm-pin-text").textContent = isPinned ? "Unpin Folder" : "Pin Folder";
+    } else {
+      const isFav = getFavoritedFiles().includes(currentTargetItem.path);
+      document.getElementById("cm-favorite-text").textContent = isFav ? "Unfavorite File" : "Favorite File";
+    }
 
     // Position and show menu
     contextMenu.style.top = `${e.clientY}px`;
@@ -693,6 +770,18 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
   }
 
   // 3. Bind Menu Actions
+  document.getElementById("cm-pin").onclick = () => {
+    if (currentTargetItem) {
+      togglePinFolder(currentTargetItem.path);
+      hideContextMenu();
+    }
+  };
+  document.getElementById("cm-favorite").onclick = () => {
+    if (currentTargetItem) {
+      toggleFavoriteFile(currentTargetItem.path);
+      hideContextMenu();
+    }
+  };
   document.getElementById("cm-rename").onclick = () => {
     if (currentTargetItem)
       window.triggerRename(
@@ -866,21 +955,56 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
         .map((f) => ({ ...f, fullPath: `${searchPath}/${f.name}` }));
     }
 
+    // Apply Sorting to Files
+    files.sort((a, b) => {
+      const nameA = a.name.replace(/^\d+_/, "").toLowerCase();
+      const nameB = b.name.replace(/^\d+_/, "").toLowerCase();
+      if (currentSort === "name-asc") return nameA.localeCompare(nameB);
+      if (currentSort === "name-desc") return nameB.localeCompare(nameA);
+      
+      const timeA = new Date(a.created_at || 0).getTime();
+      const timeB = new Date(b.created_at || 0).getTime();
+      return timeB - timeA;
+    });
+
+    // Handle Favorites Sorting
+    const favPaths = getFavoritedFiles();
+    const favoritedFiles = files.filter(f => favPaths.includes(f.fullPath));
+    const normalFiles = files.filter(f => !favPaths.includes(f.fullPath));
+    files = [...favoritedFiles, ...normalFiles];
+
     container.innerHTML = "";
 
-    // Render Folders Section
+    // Split Folders into Pinned and Normal
+    let pinnedFolders = [];
+    let normalFolders = [];
     if (folders.length > 0) {
-      const folderSection = document.createElement("div");
-      folderSection.innerHTML = `<h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Folders</h3>`;
-      const folderGrid = document.createElement("div");
-      folderGrid.className =
-        "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4";
-
-      folders.forEach((folder) => {
-        const folderDisplayName = folder.name.replace(/\/$/, "");
+      const pinnedPaths = getPinnedFolders();
+      folders.forEach(folder => {
         const folderFullPath = searchQuery
           ? `${workspaceId}/${folder.name}`
           : `${workspaceId}/${prefix}${folder.name}`;
+        
+        folder._fullPath = folderFullPath; // Store for later
+        
+        if (pinnedPaths.includes(folderFullPath)) {
+          pinnedFolders.push(folder);
+        } else {
+          normalFolders.push(folder);
+        }
+      });
+    }
+
+    const renderFolderGroup = (folderGroup, title, isPinnedSection) => {
+      const folderSection = document.createElement("div");
+      folderSection.innerHTML = `<h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">${title}</h3>`;
+      const folderGrid = document.createElement("div");
+      folderGrid.className =
+        "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-6";
+
+      folderGroup.forEach((folder) => {
+        const folderDisplayName = folder.name.replace(/\/$/, "");
+        const folderFullPath = folder._fullPath;
 
         const card = document.createElement("div");
         card.className =
@@ -920,14 +1044,20 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
           refreshUI();
         };
         card.innerHTML = `
-          <svg class="w-10 h-10 text-blue-400/80 pointer-events-none drop-shadow-sm" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path></svg>
+          <div class="relative">
+            <svg class="w-10 h-10 text-blue-400/80 pointer-events-none drop-shadow-sm" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path></svg>
+            ${isPinnedSection ? '<div class="absolute -top-1 -right-1 bg-white rounded-full p-0.5 shadow-sm border border-gray-100"><svg class="w-3 h-3 text-blue-600" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"></path></svg></div>' : ''}
+          </div>
           <span class="text-sm font-semibold text-slate-700 truncate pointer-events-none group-hover:text-blue-600 transition-colors" title="${folderDisplayName}">${folderDisplayName}</span>
         `;
         folderGrid.appendChild(card);
       });
       folderSection.appendChild(folderGrid);
       container.appendChild(folderSection);
-    }
+    };
+
+    if (pinnedFolders.length > 0) renderFolderGroup(pinnedFolders, "Pinned Folders", true);
+    if (normalFolders.length > 0) renderFolderGroup(normalFolders, "Folders", false);
 
     // Render Files Section
     if (files.length > 0) {
@@ -978,7 +1108,7 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
             JSON.stringify({ path: fullPath, type: "file" })
           );
         };
-        card.className = `group flex flex-col justify-between p-4 rounded-xl border border-gray-200 bg-white hover:border-blue-300 hover:shadow-md transition-all ${
+        card.className = `relative group flex flex-col justify-between p-4 rounded-xl border border-gray-200 bg-white hover:border-blue-300 hover:shadow-md transition-all ${
           isAdmin ? "cursor-grab active:cursor-grabbing" : ""
         }`;
 
@@ -1016,6 +1146,7 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
               ${iconHtml}
             </div>
             <span class="block w-full text-xs font-semibold text-gray-700 truncate text-center pointer-events-none" title="${displayName}">${displayName}</span>
+            ${favPaths.includes(fullPath) ? '<div class="absolute top-2 right-2 text-yellow-400 pointer-events-none"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg></div>' : ''}
           </div>
           <div class="flex justify-between items-center border-t border-gray-100 pt-3 mt-auto">
             ${

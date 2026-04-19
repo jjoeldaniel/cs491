@@ -486,7 +486,125 @@ import { OrganizationSwitcher } from "@clerk/astro/components";
       el.classList.add("ring-2", "ring-blue-500", "bg-blue-50");
     }
   };
+    // --- Marquee (rubber-band) selection ---
+  let marqueeActive = false;
+  let marqueeStartX = 0;
+  let marqueeStartY = 0;
+  let marqueeAdditive = false;
+  let marqueeInitialSelection = new Set();
+  let marqueeEl = null;
 
+  function ensureMarqueeElement() {
+    if (marqueeEl) return marqueeEl;
+    marqueeEl = document.createElement("div");
+    marqueeEl.id = "marquee-selection";
+    marqueeEl.className =
+      "absolute pointer-events-none border border-blue-500 bg-blue-500/10 rounded-sm z-40";
+    marqueeEl.style.display = "none";
+    driveMain.appendChild(marqueeEl);
+    return marqueeEl;
+  }
+
+  function clearCurrentSelectionVisuals() {
+    selectedItems.forEach((path) => {
+      const el = document.querySelector(
+        `[data-item-path="${CSS.escape(path)}"]`
+      );
+      if (el) el.classList.remove("ring-2", "ring-blue-500", "bg-blue-50");
+    });
+    selectedItems.clear();
+  }
+
+  driveMain.addEventListener("mousedown", (e) => {
+    // Only left-click; ignore clicks that land on interactive children
+    if (e.button !== 0) return;
+    if (e.target.closest("[data-item-path]")) return;
+    if (e.target.closest("button, input, select, a, label")) return;
+
+    marqueeActive = true;
+    marqueeAdditive = e.ctrlKey || e.metaKey || e.shiftKey;
+
+    // Auto-enable Select Mode so the UI state matches the outcome
+    if (!isSelectMode && toggleSelectBtn) toggleSelectBtn.click();
+
+    ensureMarqueeElement();
+
+    const rect = driveMain.getBoundingClientRect();
+    marqueeStartX = e.clientX - rect.left + driveMain.scrollLeft;
+    marqueeStartY = e.clientY - rect.top + driveMain.scrollTop;
+
+    if (marqueeAdditive) {
+      marqueeInitialSelection = new Set(selectedItems);
+    } else {
+      clearCurrentSelectionVisuals();
+      marqueeInitialSelection = new Set();
+    }
+
+    marqueeEl.style.display = "block";
+    marqueeEl.style.left = `${marqueeStartX}px`;
+    marqueeEl.style.top = `${marqueeStartY}px`;
+    marqueeEl.style.width = "0px";
+    marqueeEl.style.height = "0px";
+
+    e.preventDefault(); // suppress text selection during drag
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!marqueeActive || !marqueeEl) return;
+
+    const rect = driveMain.getBoundingClientRect();
+    const currentX = e.clientX - rect.left + driveMain.scrollLeft;
+    const currentY = e.clientY - rect.top + driveMain.scrollTop;
+
+    const left = Math.min(marqueeStartX, currentX);
+    const top = Math.min(marqueeStartY, currentY);
+    const width = Math.abs(currentX - marqueeStartX);
+    const height = Math.abs(currentY - marqueeStartY);
+
+    marqueeEl.style.left = `${left}px`;
+    marqueeEl.style.top = `${top}px`;
+    marqueeEl.style.width = `${width}px`;
+    marqueeEl.style.height = `${height}px`;
+
+    // Convert the marquee (in driveMain-internal coords) back to viewport
+    // coords for hit-testing against getBoundingClientRect()
+    const marqueeViewport = {
+      left: left + rect.left - driveMain.scrollLeft,
+      top: top + rect.top - driveMain.scrollTop,
+      right: left + width + rect.left - driveMain.scrollLeft,
+      bottom: top + height + rect.top - driveMain.scrollTop,
+    };
+
+    const cards = driveMain.querySelectorAll("[data-item-path]");
+    cards.forEach((card) => {
+      const cr = card.getBoundingClientRect();
+      const intersects = !(
+        cr.right < marqueeViewport.left ||
+        cr.left > marqueeViewport.right ||
+        cr.bottom < marqueeViewport.top ||
+        cr.top > marqueeViewport.bottom
+      );
+      const path = card.getAttribute("data-item-path");
+      const wasInInitial = marqueeInitialSelection.has(path);
+      const shouldBeSelected = marqueeAdditive
+        ? wasInInitial || intersects
+        : intersects;
+
+      if (shouldBeSelected && !selectedItems.has(path)) {
+        selectedItems.add(path);
+        card.classList.add("ring-2", "ring-blue-500", "bg-blue-50");
+      } else if (!shouldBeSelected && selectedItems.has(path) && !wasInInitial) {
+        selectedItems.delete(path);
+        card.classList.remove("ring-2", "ring-blue-500", "bg-blue-50");
+      }
+    });
+  });
+
+  document.addEventListener("mouseup", () => {
+    if (!marqueeActive) return;
+    marqueeActive = false;
+    if (marqueeEl) marqueeEl.style.display = "none";
+  });
   if (document.getElementById("bg-cm-new-folder"))
     document.getElementById("bg-cm-new-folder").onclick = () => {
       if (bgMenu) bgMenu.classList.add("hidden");

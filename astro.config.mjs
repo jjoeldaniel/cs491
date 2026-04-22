@@ -6,10 +6,12 @@ import tailwindcss from "@tailwindcss/vite";
 
 import vercel from "@astrojs/vercel";
 
+import cloudflare from "@astrojs/cloudflare";
+
 // https://astro.build/config
 export default defineConfig({
   output: "server",
-  adapter: vercel(),
+  adapter: cloudflare(),
   integrations: [clerk()],
   vite: {
     plugins: [tailwindcss()],

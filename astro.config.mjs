@@ -2,15 +2,14 @@
 import { defineConfig } from "astro/config";
 
 import clerk from "@clerk/astro";
-import cloudflare from "@astrojs/cloudflare";
 import tailwindcss from "@tailwindcss/vite";
+
+import vercel from "@astrojs/vercel";
 
 // https://astro.build/config
 export default defineConfig({
   output: "server",
-  adapter: cloudflare({
-      sessionKVBindingName: 'SESSION', 
-    }),
+  adapter: vercel(),
   integrations: [clerk()],
   vite: {
     plugins: [tailwindcss()],
